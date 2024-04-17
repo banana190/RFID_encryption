@@ -1,32 +1,38 @@
-# _Sample project_
+# burn key in efuse
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+Check your esp32 with :
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+espefuse.py --port <your_esp_device_COM> summary
+e.g. espefuse.py --port COM5 summary
 
+# As the [documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/efuse.html)
 
+ESP32 has 4 eFuse blocks each of the size of 256 bits (not all bits are available):
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+EFUSE_BLK0 is used entirely for system purposes;
 
-## Example folder contents
+EFUSE_BLK1 is used for flash encrypt key. If not using that Flash Encryption feature, they can be used for another purpose;
 
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+EFUSE_BLK2 is used for security boot key. If not using that Secure Boot feature, they can be used for another purpose;
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
+# EFUSE_BLK3 can be partially reserved for the custom MAC address, or used entirely for user application. Note that some bits are already used in ESP-IDF.
 
-Below is short explanation of remaining files in the project folder.
+So I use BLK3 to save the HMAC key, please check your ESP32's efuse haven't been occupied.
 
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+A new ESP32 should be look like this:
+
+BLOCK1 (BLOCK1) Flash encryption key
+= 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W
+BLOCK2 (BLOCK2) Security boot key
+= 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W
+BLOCK3 (BLOCK3) Variable Block 3
+= 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W
+
+Once you make sure the block you want to use, prepare the HMAC key: HMAC.bin
+
+**WARNING: This is irreparable**
+Burn your key with:
+espefuse.py --port <your_esp_device_COM> burn_key <BLOCK1/2/3> HMAC.bin
+
+e.g.
+espefuse.py --port COM5 burn_key BLOCK3 HMAC.bin
