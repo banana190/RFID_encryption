@@ -3,6 +3,7 @@ O: done , X: not started.
 
 O Generate a EDCH key pair   
 O Find esp32 on LAN using UDP   
+O Burn HMAC key on Efuse
 WIP: RSA certificate <----   
 X Write RSA key.pem to secure boot  
 X AES Key derivation based on EDCH shared key
