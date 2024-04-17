@@ -15,7 +15,7 @@ EFUSE_BLK1 is used for flash encrypt key. If not using that Flash Encryption fea
 
 EFUSE_BLK2 is used for security boot key. If not using that Secure Boot feature, they can be used for another purpose;
 
-# EFUSE_BLK3 can be partially reserved for the custom MAC address, or used entirely for user application. Note that some bits are already used in ESP-IDF.
+**EFUSE_BLK3 can be partially reserved for the custom MAC address, or used entirely for user application. Note that some bits are already used in ESP-IDF.**
 
 So I use BLK3 to save the HMAC key, please check your ESP32's efuse haven't been occupied.
 
@@ -23,16 +23,18 @@ A new ESP32 should be look like this:
 
 BLOCK1 (BLOCK1) Flash encryption key
 = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W
+
 BLOCK2 (BLOCK2) Security boot key
 = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W
+
 BLOCK3 (BLOCK3) Variable Block 3
 = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W
 
-Once you make sure the block you want to use, prepare the HMAC key: HMAC.bin
+Once you make sure the block you want to use, prepare the HMAC key: hmac_key.bin which is 32 bytes.
 
-**WARNING: This is irreparable**
+# **WARNING: This is irreparable**
 Burn your key with:
-espefuse.py --port <your_esp_device_COM> burn_key <BLOCK1/2/3> HMAC.bin
+espefuse.py --port <your_esp_device_COM> burn_key <BLOCK1/2/3> hmac_key.bin
 
 e.g.
-espefuse.py --port COM5 burn_key BLOCK3 HMAC.bin
+espefuse.py --port COM5 burn_key BLOCK3 hmac_key.bin
