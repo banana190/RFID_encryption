@@ -232,11 +232,12 @@ void flash_writer() // this function might only be used for once since after I e
     if (HMAC_derive_AES_for_RSA_privateKey(AES_key)!=0){
         return;
     }
-    char RSA_private_key[] = "your key"; // I'm using RSA-2048 private key 
+    char RSA_private_key[] = "RSA private_key"; // I'm using RSA-2048 private key 
     ESP_LOGI("Flash Writer", " RSA private key loaded successfully");
     size_t RSA_private_key_length = strlen(RSA_private_key);
     ESP_LOGI("RSA","Private key length: %d", RSA_private_key_length); 
-    uint8_t RSA_encrypted_key[4096]; // I cut a 4kb flash to store the encrypted RSA key
+    uint8_t* RSA_encrypted_key = malloc(4096); // I cut a 4kb flash to store the encrypted RSA key
+    memset(RSA_encrypted_key, 0, 4096);
     RSA_private_key_length = pad_string_pkcs7(RSA_private_key,&RSA_private_key_length);
     ESP_LOGI("RSA","Private key length arter padding: %d", RSA_private_key_length);
     for (int i = 0; i < RSA_private_key_length/16; i++) {
@@ -251,24 +252,30 @@ void flash_writer() // this function might only be used for once since after I e
         ESP_LOGI("AES", "AES encrypting : block%d",i); 
     }
     ESP_LOGI("AES", "AES encryption done");
+    ESP_LOGI("RSA", "RSA encrypted key:");
+    // for (int i = 0; i < sizeof(RSA_private_key); i++) {
+    //     printf("%c", RSA_encrypted_key[i]);
+    // }
+    // printf("\n"); // this just for checking is there anything in RSA_encrypted_key[]
     ESP_LOGI("Flash", "label: %s",rsa_key_partition->label);
     ESP_LOGI("Flash", "Erase_size: %"PRIu32"",rsa_key_partition->erase_size);
     ESP_LOGI("Flash", "Size: %"PRIu32"",rsa_key_partition->size);
     ESP_LOGI("Flash", "Address: %"PRIu32"",rsa_key_partition->address);
-    //***ERROR*** A stack overflow in task main has been detected.
-    esp_err_t ret = esp_partition_erase_range(rsa_key_partition, 0, 4096);
-    // idk how to fix it right now...
-    if (ret != ESP_OK) {
-    ESP_LOGE("AES", "Failed to erase partition: %s", esp_err_to_name(ret));
-    return;
-    }
-    ESP_LOGI("Flash Writer", "Erase current flash");
-    ret = esp_flash_write(NULL,RSA_encrypted_key, rsa_key_partition->address, 4096);
+    // I realize that esp_idf will erase the flash by default so it doesn't really need to erase it.
+    // esp_err_t ret = esp_partition_erase_range(rsa_key_partition, 0, 4096);
+    // if (ret != ESP_OK) {
+    // ESP_LOGE("AES", "Failed to erase partition: %s", esp_err_to_name(ret));
+    // return;
+    // }
+    // esp_flash_init(NULL); //<- if NULL then don't need to init (#10516)
+    // ESP_LOGI("Flash Writer", "Initializing flash");
+    esp_err_t ret = esp_flash_write(NULL,RSA_encrypted_key, rsa_key_partition->address, 4096);
     if (ret != ESP_OK) {
         ESP_LOGE("Flash Writer", "Error writing data to flash: %d", ret);
         return;
     }
     ESP_LOGI("Flash Writer", "Flash done: %d", ret);
+    free(RSA_encrypted_key);
 }
 
 
