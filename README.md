@@ -3,9 +3,9 @@ O: done , X: not started.
 
 O Generate a EDCH key pair   
 O Find esp32 on LAN using UDP   
-O Burn HMAC key on Efuse    
+O Burn HMAC key on Efuse
+O HMAC Derive AES for RSA private key and write it in flash   
 WIP: RSA certificate <----   
-X HMAC Derive AES for RSA private key and write it in flash   
 ? Use another key to encrypt the flash // Do we really need this?    
 X AES Key derivation based on EDCH shared key    
 X RC522  
