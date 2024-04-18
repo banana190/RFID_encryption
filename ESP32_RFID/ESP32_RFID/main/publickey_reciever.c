@@ -17,6 +17,9 @@
 #include "mbedtls/md.h"
 #include "mbedtls/aes.h"
 
+#include "esp_flash.h"
+
+
 
 #define PORT 9527
 #define CHAR_SET "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!~@#$^()_+=-"
@@ -27,6 +30,48 @@
 
 
 static const char *TAGg = "example";
+
+// pkcs7 is that if the length is 31 mod 16 = 15 then you fill 16-15 = 0x01 one times  
+//                                40 mod 16 = 8  then you fill 16- 8 = 0x08 eight times           
+size_t pad_string_pkcs7(char *input_string, size_t *length) {
+    ESP_LOGI("pkcs7", "length before doing any process for padding : %zu", *length);
+    int block_size = 16; // for AES the input block size is 16 bytes (128 bits)
+    int input_length = strlen(input_string); 
+    int padding_size = block_size - (input_length % block_size); // 16 - length mod 16
+    size_t temp = *length + padding_size;
+    if (padding_size == 0) {
+        return *length;          // the size if perfect no need to padding
+    }
+    char padding = (char)padding_size;
+    for (int i = 0; i < padding_size; i++) {
+        input_string[input_length + i] = padding;
+    }
+    // Since I did't put \0 at the end of the string(will make it become 16x + 1), 
+    // this length will search until find \0.
+    // I thought the compiler would add \0 automatically but it doesn't... 
+    // so it cause stack overflow here since input wrong length.
+    // btw I don't know will the \0 effect my AES encryption or not.
+    // ESP_LOGI("pkcs7", "length before padding : %zu", *length);
+    // ESP_LOGI("pkcs7", "padding size : %d", padding_size);
+    // *length += padding_size; 
+    ESP_LOGI("pkcs7", "length after padding : %zu", temp);
+    ESP_LOGI("pkcs7", "padding done!");
+    return temp;
+}
+
+void AES_encrypter(const uint8_t *data, size_t data_len, const uint8_t *aes_key,uint8_t *encrypted_data) // haven't test yet hope will work
+{
+    mbedtls_aes_context aes;
+    mbedtls_aes_init(&aes);
+    int ret = mbedtls_aes_setkey_enc(&aes, aes_key, AES_KEY_SIZE * 8);
+    if(ret != 0)
+    {
+        ESP_LOGE("AES","AES key set error");
+        return;
+    }
+    mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, data, encrypted_data);
+    mbedtls_aes_free(&aes);
+}
 
 char* generate_random_string(int length) {
     char* random_string = malloc((length + 1) * sizeof(char));
@@ -133,7 +178,7 @@ void udp_broadcaster()
         close(sock);
         vTaskDelay(portMAX_DELAY);
     }
-    const char *message = "This is ESP32 broadcasting"; // TODO: This message should be encrypted
+    // const char *message = "This is ESP32 broadcasting"; // TODO: This message should be encrypted
     struct sockaddr_in dest_addr;
     memset(&dest_addr, 0, sizeof(dest_addr));
     dest_addr.sin_family = AF_INET;
@@ -147,12 +192,16 @@ char RSA_Sign_with_SHA256()//WIP
     return signature;
 }
 
-char HMAC_derive_AES_for_RSA_privateKey() // this will always generate same AES key for RSA
+int HMAC_derive_AES_for_RSA_privateKey(unsigned char *derived_key) // this will always generate same AES key for RSA
 {
     const char *salt = "Please stop stack overflowing thank you please god"; // I will change this in real application
     const int iterations = 1000;   // I will change this in real application
-    unsigned char derived_key[32]; // AES-256
     int ret;
+    if (AES_KEY_SIZE!=32)
+    {
+        ret = -1;
+        ESP_LOGE("AES","Output size error! Key output size must be 32 bytes");
+    }
 
     ret = mbedtls_pkcs5_pbkdf2_hmac_ext(
         MBEDTLS_MD_SHA256,  // SHA-256 as hash
@@ -169,34 +218,57 @@ char HMAC_derive_AES_for_RSA_privateKey() // this will always generate same AES 
         ESP_LOGE("AES Key Derivation", "Failed to derive key: %d", ret);
     }
 
-    return derived_key;
+    return ret;
 }
 
 void flash_writer() // this function might only be used for once since after I encrypted the RSA into flash
 {
-    char RSA_private_key[700]; // I'm using RSA-2048 so the private key is like 600-700 bytes long.
-    uint8_t encrypt_key[16]    // I wish it can be 16 bytes long... wish.
-    = AES_encrypter(RSA_private_key, sizeof(RSA_private_key), HMAC_derive_AES_for_RSA_privateKey()); // I'm gonna sleep so the size...yeah
-    int ret = spi_flash_write(FLASH_ADDR, encrypt_key, 16);
+    const esp_partition_t* rsa_key_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS_KEYS, "RSA_key");
+    if (!rsa_key_partition) {
+        ESP_LOGE("Flash Writer", "RSA_key partition not found");
+        return;
+    }   
+    unsigned char AES_key[AES_KEY_SIZE]; // AES-256 key size must be 32 bytes.
+    if (HMAC_derive_AES_for_RSA_privateKey(AES_key)!=0){
+        return;
+    }
+    char RSA_private_key[] = "your key"; // I'm using RSA-2048 private key 
+    ESP_LOGI("Flash Writer", " RSA private key loaded successfully");
+    size_t RSA_private_key_length = strlen(RSA_private_key);
+    ESP_LOGI("RSA","Private key length: %d", RSA_private_key_length); 
+    uint8_t RSA_encrypted_key[4096]; // I cut a 4kb flash to store the encrypted RSA key
+    RSA_private_key_length = pad_string_pkcs7(RSA_private_key,&RSA_private_key_length);
+    ESP_LOGI("RSA","Private key length arter padding: %d", RSA_private_key_length);
+    for (int i = 0; i < RSA_private_key_length/16; i++) {
+        unsigned char temp[16]; // AES input 16 bytes
+        for (int j = 0; j < 16; j++) {
+            temp[j]= RSA_private_key[i*16 + j];
+        }
+        AES_encrypter(temp, sizeof(temp), AES_key, temp);
+        for (int j = 0; j < 16; j++) {
+            RSA_encrypted_key[i * 16 + j] = temp[j];
+        }        
+        ESP_LOGI("AES", "AES encrypting : block%d",i); 
+    }
+    ESP_LOGI("AES", "AES encryption done");
+    ESP_LOGI("Flash", "label: %s",rsa_key_partition->label);
+    ESP_LOGI("Flash", "Erase_size: %"PRIu32"",rsa_key_partition->erase_size);
+    ESP_LOGI("Flash", "Size: %"PRIu32"",rsa_key_partition->size);
+    ESP_LOGI("Flash", "Address: %"PRIu32"",rsa_key_partition->address);
+    //***ERROR*** A stack overflow in task main has been detected.
+    esp_err_t ret = esp_partition_erase_range(rsa_key_partition, 0, 4096);
+    // idk how to fix it right now...
+    if (ret != ESP_OK) {
+    ESP_LOGE("AES", "Failed to erase partition: %s", esp_err_to_name(ret));
+    return;
+    }
+    ESP_LOGI("Flash Writer", "Erase current flash");
+    ret = esp_flash_write(NULL,RSA_encrypted_key, rsa_key_partition->address, 4096);
     if (ret != ESP_OK) {
         ESP_LOGE("Flash Writer", "Error writing data to flash: %d", ret);
         return;
     }
+    ESP_LOGI("Flash Writer", "Flash done: %d", ret);
 }
 
-uint8_t AES_encrypter(const uint8_t *data, size_t data_len, const uint8_t *aes_key) // haven't test yet hope will work
-{
-    mbedtls_aes_context aes;
-    mbedtls_aes_init(&aes);
-    int ret = mbedtls_aes_setkey_enc(&aes, aes_key, AES_KEY_SIZE * 8);
-    if(ret != 0)
-    {
-        ESP_LOGE("AES","AES key set error");
-        return;
-    }
 
-    uint8_t encrypted_data[data_len]; // the size might need to be change
-    mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, data, encrypted_data);
-    mbedtls_aes_free(&aes);
-    return encrypted_data;
-}

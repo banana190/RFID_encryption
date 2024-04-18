@@ -43,8 +43,9 @@ void app_main(void) {
     ESP_ERROR_CHECK(ret);
     wifi_connect();
 
-    // udp_server_task keep stack overflowing and I have no idea what to do with
+    // udp_server_task keep stack overflowing and I have no idea what to do with <- fixed
     xTaskCreate(udp_server_task, "udp_server", 8192, (void*)AF_INET, 5, NULL);
     udp_broadcaster();
     ecdh_key_exchange();
+    // flash_writer();
 }
