@@ -1,4 +1,4 @@
-﻿# RFID_encryption
+# RFID_encryption
 O: done , X: not started.
 
 O Generate a EDCH key pair   
@@ -14,4 +14,11 @@ X Write Encrypt UID to card
 X Card attach fail handling  
 
 Other part of this project: TOTP and Password  
+
+The reason why the progress is slow because I've use two days try to make my esp prog working.
+However, All I get is :
+Error: JTAG scan chain interrogation failed: all ones
+like I cannot remember how many times I've connect and disconnect GPIO 12-15
+Well I guess it's time for debugging only using ESP_LOGI();
+Some things don't matter until they're lost, like debugger. Sadge
  
