@@ -17,6 +17,23 @@
   "idf.gitPathWin": "C:\\Users\\coding\\.espressif\\tools\\idf-git\\2.39.2\\cmd\\git.exe",
   "files.associations": {
     "wifi_connect.h": "c",
-    "esp_event_base.h": "c"
-  }
+    "esp_event_base.h": "c",
+    "esp_spi_flash.h": "c",
+    "spi_flash_mmap.h": "c",
+    "aes.h": "c",
+    "esp_flash.h": "c",
+    "md.h": "c",
+    "pkcs5.h": "c",
+    "build_info.h": "c",
+    "esp_wifi.h": "c",
+    "flash_wirte_rsa_key.h": "c",
+    "publickey_reciever.h": "c",
+    "array": "c",
+    "*.tcc": "c",
+    "random": "c",
+    "nvs_flash.h": "c",
+    "esp_system.h": "c"
+  },
+  "idf.portWin": "COM5",
+  "idf.flashType": "UART"
 }

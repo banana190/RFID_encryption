@@ -87,6 +87,8 @@ void wifi_connect() {
     ESP_ERROR_CHECK(esp_wifi_start() ); 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
+    // ESP_ERROR_CHECK(esp_netif_set_hostname(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"),"testing"));
+
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
             WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
             pdFALSE,
