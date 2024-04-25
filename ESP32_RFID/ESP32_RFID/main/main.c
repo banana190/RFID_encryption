@@ -45,6 +45,7 @@ void app_main(void) {
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+    unnamed();
     wifi_connect();
     // udp_server_task keep stack overflowing and I have no idea what to do with <- fixed
     xTaskCreate(udp_server_task, "udp_server", 8192, (void*)AF_INET, 5, NULL);
@@ -52,6 +53,7 @@ void app_main(void) {
     // ecdh_key_exchange();
 
     // testing area
+
     /*
     char testing_string[4096] = "abcdefg";
     size_t test_length = strlen(testing_string);
@@ -65,5 +67,8 @@ void app_main(void) {
     ESP_LOGI("TEST","%s",tester);
     free(tester);
     */
+    // flash_writer();
+    // uint8_t *decrypted_rsa_private_key = malloc(4096); // Ensure your buffer is appropriately sized
+    // flash_reader(decrypted_rsa_private_key, 4096);
     return;
 }
