@@ -175,7 +175,7 @@ int rsa_sign(uint8_t *data, size_t data_len, uint8_t *private_key, size_t privat
     // note:
     //      int mbedtls_ctr_drbg_random(void *p_rng, unsigned char *output, size_t output_len)
     //      int                (*f_rng)(void *     , unsigned char *      , size_t)
-    ret = mbedtls_pk_parse_key(&ctx, private_key, private_key_len, NULL, 0,mbedtls_ctr_drbg_random,NULL);
+    ret = mbedtls_pk_parse_key(&ctx, private_key, private_key_len, NULL, 0,mbedtls_ctr_drbg_random,&ctr_drbg);
     if (ret != 0) {
         ESP_LOGE("RSA Sign", "mbedtls_pk_parse_key error");
         printf("Error code: %d\n", ret);
@@ -185,7 +185,7 @@ int rsa_sign(uint8_t *data, size_t data_len, uint8_t *private_key, size_t privat
     ESP_LOGI("RSA Sign", "mbedtls_pk_parse_key set success");
 
     // this function creates a signature         // this 32 is come from SHA256, the hash length is 32 bytes.
-    ret = mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA256, data, 32, signature,*signature_len, signature_len, mbedtls_ctr_drbg_random, NULL);
+    ret = mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA256, data, 32, signature,*signature_len, signature_len, mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
         ESP_LOGE("RSA Sign", "mbedtls_pk_sign error");
         printf("Error code: %d\n", ret);
