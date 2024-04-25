@@ -9,9 +9,11 @@
 #include "mbedtls/pkcs5.h"
 #include "mbedtls/md.h"
 #include "mbedtls/aes.h"
+#include "mbedtls/base64.h"
 
 #define AES_KEY_SIZE 32
-#define Input_RSA_private_key  "your key here"
+#define Input_RSA_private_key  "Your Pem key without head and tail and /n"
+#define Input_RSA_public_key_length 1600
 // based on partiton.csv file.
 // e.g. RSA_key,data,nvs_keys,,0x1000 <--- the size is 4kb so it's 4096
 #define PARTITION_SIZE 4096 
@@ -137,6 +139,17 @@ void depad_string_pkcs7(uint8_t *input_string, size_t *length)
     ESP_LOGI("pkcs7","depadding done, the length now is: %zu",*length);
 }
 
+void decode_pem_base64_to_der(const char *base64_str, size_t base64_len, unsigned char *der_output, size_t *der_len) {
+    ESP_LOGI("Base64", "decoder started");
+
+    int ret = mbedtls_base64_decode(der_output, *der_len, der_len, (const unsigned char *)base64_str, base64_len);
+
+    if (ret == 0) {
+        ESP_LOGI("Base64", "decoding successful, length of DER data: %zu\n", *der_len);
+    } else {
+        ESP_LOGE("Base64","Failed to decode Base64, error code: %d\n", ret);
+    }
+}
 /**
  * @brief Encrypts or decrypts a string using AES-256.
  *
@@ -206,28 +219,27 @@ void flash_writer() // this function might only be used for once since after I e
         ESP_LOGE("Flash Writer", "RSA_key partition not found");
         return;
     }   
-    char RSA_private_key[4096] = Input_RSA_private_key; // I'm using RSA-2048 private key 
+    char temp[4096] = Input_RSA_private_key; // I'm using RSA-2048 private key 
+    size_t temp_len = strlen(temp); 
+    size_t RSA_private_key_length = 4096;
+    uint8_t *RSA_encrypted_key = malloc(RSA_private_key_length);// I cut a 4kb flash to store the encrypted RSA key
+    decode_pem_base64_to_der(temp,temp_len,RSA_encrypted_key,&RSA_private_key_length);
     ESP_LOGI("Flash Writer", " RSA private key loaded successfully");
-    size_t RSA_private_key_length = strlen(RSA_private_key);
-    uint8_t* RSA_encrypted_key = malloc(4096); // I cut a 4kb flash to store the encrypted RSA key
-    memcpy(RSA_encrypted_key, RSA_private_key, 4096);
     RSA_private_key_length = string_with_AES(RSA_encrypted_key,RSA_private_key_length,false);
-    ESP_LOGI("Flash", "RSA private key encrypted and ready to flash:");
-    print_hex_uint8_t(RSA_encrypted_key, RSA_private_key_length);
     ESP_LOGI("Flash", "label: %s",rsa_key_partition->label);
     ESP_LOGI("Flash", "Erase_size: %"PRIu32"",rsa_key_partition->erase_size);
     ESP_LOGI("Flash", "Size: %"PRIu32"",rsa_key_partition->size);
     ESP_LOGI("Flash", "Address: %"PRIu32"",rsa_key_partition->address);
     // I realize that esp_idf will erase the flash by default so it doesn't really need to erase it.
     // Change RSA_key,  data, nvs_keys, ,        0x1000, --->readonly<----- to keep it in flash
-    // esp_err_t ret = esp_partition_erase_range(rsa_key_partition, 0, 4096);
-    // if (ret != ESP_OK) {
-    // ESP_LOGE("AES", "Failed to erase partition: %s", esp_err_to_name(ret));
-    // return;
-    // }
-    // esp_flash_init(NULL); //<- if NULL then don't need to init (#10516)
-    // ESP_LOGI("Flash Writer", "Initializing flash");
-    esp_err_t ret = esp_flash_write(NULL,RSA_encrypted_key, rsa_key_partition->address, 4096);
+    esp_err_t ret = esp_partition_erase_range(rsa_key_partition, 0, 4096);
+    if (ret != ESP_OK) {
+    ESP_LOGE("AES", "Failed to erase partition: %s", esp_err_to_name(ret));
+    return;
+    }
+    ESP_LOGI("Flash", "RSA private key encrypted and ready to flash:");
+    print_hex_uint8_t(RSA_encrypted_key, RSA_private_key_length);
+    ret = esp_flash_write(NULL,RSA_encrypted_key, rsa_key_partition->address, RSA_private_key_length);
     if (ret != ESP_OK) {
         ESP_LOGE("Flash Writer", "Error writing data to flash: %d", ret);
         return;
@@ -236,23 +248,42 @@ void flash_writer() // this function might only be used for once since after I e
     free(RSA_encrypted_key);
 }
 
-void flash_reader(uint8_t *decrypted_rsa_private_key,size_t flash_size)
+size_t flash_reader(uint8_t *decrypted_rsa_private_key,size_t flash_size)
 {
+    ESP_LOGI("Flash Reader", "start reading data from flash");
     const esp_partition_t* rsa_key_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS_KEYS, "RSA_key");
     if (!rsa_key_partition) {
         ESP_LOGE("Flash Reader", "RSA_key partition not found");
-        return;
+        return 0;
     }
     uint8_t* decrypted_rsa_key = malloc(4096);
-    esp_err_t ret = esp_flash_read(NULL, decrypted_rsa_key, rsa_key_partition->address, 4096);
+    size_t rsa_key_length =0;
+    esp_err_t ret = esp_flash_read(NULL, decrypted_rsa_key, rsa_key_partition->address, flash_size);
     if (ret != ESP_OK) {
         ESP_LOGE("Flash Reader", "Error reading data from flash: %d", ret);
         free(decrypted_rsa_key);
-        return;
+        return 0;
     }
-    size_t rsa_key_length = 4096;
+
+    for(int i = 0; i < flash_size; i++) 
+    {
+        if(decrypted_rsa_key[i+1] == (char)255&&
+           decrypted_rsa_key[i+2] == (char)255&&
+           decrypted_rsa_key[i+3] == (char)255&&
+           decrypted_rsa_key[i+4] == (char)255)
+           {
+                ESP_LOGI("Flash Reader", "reach encrypted_key's end");
+                decrypted_rsa_key[i+1] = '\0';
+                rsa_key_length = i+1;
+                break;
+           }
+    }
+    print_hex_uint8_t(decrypted_rsa_key,rsa_key_length);
     rsa_key_length = string_with_AES(decrypted_rsa_key, rsa_key_length, true); 
+    ESP_LOGI("Flash Reader", "decrypted_rsa_key :");
+    print_hex_uint8_t(decrypted_rsa_key,rsa_key_length); 
     memcpy(decrypted_rsa_private_key, decrypted_rsa_key, rsa_key_length);
     free(decrypted_rsa_key);
+    return rsa_key_length;
 }
 
