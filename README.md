@@ -5,7 +5,10 @@ O Generate a EDCH key pair
 O Find esp32 on LAN using UDP   
 O Burn HMAC key on Efuse  
 O HMAC Derive AES for RSA private key and write it in flash   
-WIP: RSA certificate <----   
+????? RSA certificate <----    
+Basically I can generate a signature but everyone don't accept it. This really waste a lot of time.  
+I'll try esp_ds_sign() see if it will work tmrw.   
+
 ? Use another key to encrypt the flash // Do we really need this?    
 X AES Key derivation based on EDCH shared key    
 X RC522  
