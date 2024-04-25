@@ -19,6 +19,8 @@
 
 #include "esp_flash.h"
 
+#include "flash_write_rsa_key.h"
+
 
 
 #define PORT 9527
@@ -30,7 +32,12 @@
 
 static const char *TAGg = "example";
 
-
+int dummy_rng(void *p_rng, unsigned char *output, size_t output_size) {
+    memset(output, 0, output_size);
+    return 0;
+    // 0x4480    RSA - The random generator failed to generate non-zeros
+    // really mad
+}
 
 
 void udp_server_task(void *pvParameters) {
@@ -139,6 +146,8 @@ void udp_broadcaster()
 
 
 int rsa_sign(uint8_t *data, size_t data_len, uint8_t *private_key, size_t private_key_len, uint8_t *signature, size_t *signature_len) {
+    ESP_LOGI("RSA","RSA signature space: %zu",*signature_len);
+
     int ret = 1;
     mbedtls_pk_context ctx;
     mbedtls_entropy_context entropy;
@@ -153,30 +162,38 @@ int rsa_sign(uint8_t *data, size_t data_len, uint8_t *private_key, size_t privat
                         This can be NULL, in which case the personalization string \
                         is empty regardless of the value of len.";
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers));
+    // ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, MBEDTLS_CTR_DRBG_ENTROPY_LEN);
     if (ret != 0) {
         ESP_LOGE("RSA Sign", "mbedtls_ctr_drbg_seed error");
         ESP_ERROR_CHECK(ret);
         goto cleanup;
     }
+    ESP_LOGI("RSA Sign", "mbedtls_ctr_drbg_seed set success");
 
-    // this function analyzes the RSA private key.
+
+    // this function analyzes the RSA private key and store it to ctx .
     // note:
     //      int mbedtls_ctr_drbg_random(void *p_rng, unsigned char *output, size_t output_len)
     //      int                (*f_rng)(void *     , unsigned char *      , size_t)
-    ret = mbedtls_pk_parse_key(&ctx, private_key, private_key_len, NULL, 0,mbedtls_ctr_drbg_random,&ctr_drbg);
+    ret = mbedtls_pk_parse_key(&ctx, private_key, private_key_len, NULL, 0,mbedtls_ctr_drbg_random,NULL);
     if (ret != 0) {
         ESP_LOGE("RSA Sign", "mbedtls_pk_parse_key error");
+        printf("Error code: %d\n", ret);
         ESP_ERROR_CHECK(ret);
         goto cleanup;
     }
+    ESP_LOGI("RSA Sign", "mbedtls_pk_parse_key set success");
 
-    // this function creates a signature
-    ret = mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA256, data, 32, signature,sizeof(signature), signature_len, mbedtls_ctr_drbg_random, &ctr_drbg);
+    // this function creates a signature         // this 32 is come from SHA256, the hash length is 32 bytes.
+    ret = mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA256, data, 32, signature,*signature_len, signature_len, mbedtls_ctr_drbg_random, NULL);
     if (ret != 0) {
         ESP_LOGE("RSA Sign", "mbedtls_pk_sign error");
+        printf("Error code: %d\n", ret);
         ESP_ERROR_CHECK(ret);
         goto cleanup;
     }
+    ESP_LOGI("RSA Sign", "mbedtls_pk_sign success");
+
 
     ret = 0;
 
@@ -190,15 +207,25 @@ cleanup:
 
 void unnamed()
 {
-    uint8_t data_to_sign[] = "I love Erm fish";
+    // uint8_t data_to_sign[] = "A"; // this will be a random string but now it's just testing.
+    uint8_t data_to_sign[] = "\x41"; 
+    ESP_LOGI("RSA sign Testing","input string: %u", data_to_sign[0]);
     size_t data_len = sizeof(data_to_sign);
-    uint8_t signature[512]; // Adjust size based on expected signature length
+    ESP_LOGI("RSA sign Testing","data_to_sign loaded");
+    uint8_t signature[256]; // Adjust size based on expected signature length
     size_t signature_len = sizeof(signature);
+    ESP_LOGI("RSA sign Testing","singature space loaded: %zu bytes", signature_len/8);
     uint8_t *decrypted_rsa_private_key = malloc(4096); // Ensure your buffer is appropriately sized
-    flash_reader(decrypted_rsa_private_key, 4096);
-
-    int ret = rsa_sign(data_to_sign, data_len, decrypted_rsa_private_key, 4096, signature, &signature_len);
+    size_t decrypted_rsa_private_key_len = flash_reader(decrypted_rsa_private_key, 4096);
+    ESP_LOGI("RSA sign Testing","decrypted RSA private key loaded from flash");
+    print_hex_uint8_t(decrypted_rsa_private_key, decrypted_rsa_private_key_len);
+    int ret = rsa_sign(data_to_sign, data_len, decrypted_rsa_private_key, decrypted_rsa_private_key_len, signature, &signature_len);
+    ESP_LOGI("RSA sign Testing","Signature:");
+    // IDK why this signature is wrong... , it still 32 bytes but different compared to other signatures generater.
+    // After 5 hours I've try A ,A\x00 ,A\0   [0x41,0x00] "\x41\x00" ... etc 
+    // but everything doesn't match to this signature.
+    // JavaScript Python Golang... everyone generates same signature but this uhhh thing is just different.
+    print_hex_uint8_t(signature, signature_len);
     free(decrypted_rsa_private_key);
-
 }
 
