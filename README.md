@@ -1,16 +1,22 @@
-# RFID_encryption
+# How this work?    
+Step One: The server greets the ESP.    
+Step Two: The ESP sends a signature to the server.    
+Step Three: After confirming the signature, the server sends an ECDH public key to the ESP.    
+Step Four: Upon receiving the public key, the ESP checks its integrity and, if intact, sends its public key to the server.    
+Step Five: Using the shared key derived, the ESP read the encrypted UID and the one-time key on card and sends it to the server for confirmation.    
+Step Six: After receiving confirmation from the server, the ESP writes this AES key onto the card.   
+Step Seven: The ESP sends a success message for the key writing, and the server updates the one-time key for that UID.    
+
+
+# Working progress
 O: done , X: not started.
 
 O Generate a EDCH key pair   
 O Find esp32 on LAN using UDP   
 O Burn HMAC key on Efuse  
 O HMAC Derive AES for RSA private key and write it in flash   
-????? RSA certificate <----    
-Basically I can generate a signature but everyone don't accept it. This really waste a lot of time.  
-I'll try esp_ds_sign() see if it will work tmrw.   
-
-? Use another key to encrypt the flash // Do we really need this?    
-X AES Key derivation based on EDCH shared key    
+O RSA certificate <---- done
+WIP: AES Key derivation based on EDCH shared key  
 X RC522  
 X Encrypt UID by Key which derivation based on UID and EDCH shared key  
 X Write Encrypt UID to card  
