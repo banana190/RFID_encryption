@@ -273,11 +273,14 @@ int mbedtls_rsa_sign(uint8_t *data, size_t data_len, uint8_t *private_key, size_
     // mbedtls_rsa_context *temp_rsa = mbedtls_pk_rsa(ctx);
     // memcpy(&rsa,temp_rsa,sizeof(mbedtls_rsa_context));
 
-    // VERY IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // mbedtls_pk_sign cannot feel anything about this hash is 32 bytes long or not
-    // which means even a "A" can be input, which must be invalid since the SHA256 always generate same length
-    // mbedtls_pk_sign should base on mbedtls_md_type_t to check the hash length
-    // I try to fix the wrong signature and looking everywhere like 10hrs and realize this...
+    /* VERY IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     / mbedtls_pk_sign cannot feel anything about this hash is 32 bytes long or not
+     / which means even a "A" can be input, which must be invalid since the SHA256 always generate same length
+     / mbedtls_pk_sign should base on mbedtls_md_type_t to check the hash length
+     / I try to fix the wrong signature and looking everywhere like 10hrs and realize this...
+     / I thought mbedtls_pk_sign should be able to input plaintext, since we also input the hash algoritm
+     / But you have to hash it by other function as input.
+    */
     unsigned char hash[32];
     mbedtls_sha256(data, data_len, hash, 0);
 
@@ -328,6 +331,7 @@ void unnamed()
     // After 5 hours I've try A ,A\x00 ,A\0   [0x41,0x00] "\x41\x00" ... etc 
     // but everything doesn't match to this signature.
     // JavaScript Python Golang... everyone generates same signature but this uhhh thing is just different.
+    // Update: fixed RSA signature problem.
     print_hex_uint8_t(signature, signature_len);
     ret = verify_signature(data_to_sign, data_len, signature,signature_len);
     if (ret != 0)
