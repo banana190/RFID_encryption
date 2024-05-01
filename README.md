@@ -22,12 +22,11 @@ O Find esp32 on LAN using UDP
 O Burn HMAC key on Efuse  
 O HMAC Derive AES for RSA private key and write it in flash   
 O RSA certificate <---- done     
-WIP: AES Key derivation based on EDCH shared key     
-X RC522  
-X Encrypt UID by Key which derivation based on UID and EDCH shared key  
-X Write Encrypt UID to card  
+O AES Key derivation based on EDCH shared key     
+WIP: ~~RC522~~ PN532        
+X Write one time AES key to card    
 X Card attach fail handling  
-
+- Encrypt UID by Key which derivation based on UID and EDCH shared key ---> do on server side    
 Other part of this project: TOTP and Password  
 
 The reason why the progress is slow because I've use two days try to make my esp prog working.    
