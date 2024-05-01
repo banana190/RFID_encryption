@@ -9,14 +9,17 @@ import (
 )
 
 var privateKeyHex, publicKeyBase64 string
-	
+
+func EDCH_derive_AES_key(){	// WIP
+
+}
+// TODO: need a extra function to calculate the shared secret key
 func EDCH() {
 	var Reader = rand.Reader
 	// use MBEDTLS_ECP_DP_SECP256R1 curve
 	fmt.Println("generating Key")
 	ecdh_privateKey, err := ecdh.P256().GenerateKey(Reader)
 	if err != nil {
-		// TODO: handle error
 		fmt.Println("generate failed: ", err)
 	}
 	privateKeyHex = hex.EncodeToString(ecdh_privateKey.Bytes())

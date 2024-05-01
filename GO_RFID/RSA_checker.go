@@ -38,16 +38,46 @@ func key_tester() {
 	signatureHex := hex.EncodeToString(signature)
 	fmt.Println("Signature (Hex):", signatureHex)
 }
-func parsePrivateKeyFromPEM(privateKeyPEM []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(privateKeyPEM)
+func parsePrivateKeyFromPEM(private_keyPEM []byte) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode(private_keyPEM)
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block containing private key")
 	}
-
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	private_key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
+	return private_key, nil
+}
 
-	return privateKey, nil
+func parsePublicKeyFromPEM(public_keyPEM []byte) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode(public_keyPEM)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block containing public key")
+	}
+	public_key, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return public_key, nil
+}
+
+func signature_checker(signature []byte, plaintext []byte) (int ,error){
+	public_keyPEM, err := os.ReadFile("public_key.pem")
+	if err != nil {
+		fmt.Println("Failed to read private key file:", err)
+		return 0,err
+	}
+	public_key, err := parsePublicKeyFromPEM(public_keyPEM)
+	if err != nil {
+		fmt.Println("Failed to parse private key:", err)
+		return 0,err
+	}
+	err = rsa.VerifyPKCS1v15(public_key, crypto.SHA256, plaintext, signature)
+    if err != nil {
+        fmt.Println("Signature verification failed:", err)
+        return 0,err
+    }
+    fmt.Printf("Signature verification successful\n")
+	return 1,nil
 }
