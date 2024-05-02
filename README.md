@@ -50,10 +50,11 @@ O: done , X: not started.
 
 O HTTPS so password and TOTP will be TLS1.2     
 O Database sqlite3    
-WIP:  TCP connection handle    
-WIP:  Calculate shared secret key    
-X Derive AES key based on shared key    
-X encrypt the database      
+[Abandond]TCP connection handle   
+WIP: Calculate shared secret key    
+WIP: Derive AES key based on shared key    
+WIP: JSON handle and respond
+WIP: encrypt the database      
 X Test everything
 
 BTW I'll still finish this work with only TCP in the future because it's kinda fun, but currently the project deadline is close.        
