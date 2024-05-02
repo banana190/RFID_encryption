@@ -1,3 +1,5 @@
+// TCP server is abandoned beacuse I'm using TLS right now
+
 package main
 
 import (
@@ -8,7 +10,6 @@ import (
 	"log"
 	"net"
 )
-
 func splitData(data []byte) [][]byte {
     return bytes.Split(data, []byte("\n"))
 }
@@ -42,7 +43,7 @@ func handleConnection(conn net.Conn) {
 		if valid != 1{
 			fmt.Printf("Invalid signature\n")
 		}
-		EDCH() 
+		EDCH_init() 
 		publicKeyBytes, err := base64.StdEncoding.DecodeString(publicKeyBase64)
 		_, err = conn.Write(publicKeyBytes)
 		if err != nil {

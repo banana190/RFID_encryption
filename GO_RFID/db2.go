@@ -23,6 +23,7 @@ func database_builder(){
         CREATE TABLE IF NOT EXISTS cards (
     		uid BLOB,
 			hashed_password BLOB,
+			key_this_time BLOB,
     		key_last_time BLOB,
     		totp_secret_key BLOB
 		)
@@ -31,7 +32,7 @@ func database_builder(){
         log.Fatal(err)
     }
 }
-func database_register(uid []byte,hashed_password []byte, key_last_time []byte, totp_secret_key []byte){
+func database_register(uid []byte,hashed_password []byte, key_this_time []byte, totp_secret_key []byte){
 	db, err := sql.Open("sqlite3", "./testing.db")
 	if err != nil {
         log.Fatal(err)
@@ -46,7 +47,7 @@ func database_register(uid []byte,hashed_password []byte, key_last_time []byte, 
     if err != nil {
         log.Fatal(err)
     }
-	_, err = db.Exec("INSERT INTO cards(key_last_time) VALUES(?)", key_last_time)
+	_, err = db.Exec("INSERT INTO cards(key_this_time) VALUES(?)", key_this_time)
     if err != nil {
         log.Fatal(err)
     }
@@ -89,6 +90,21 @@ func database_checker(uid []byte, input []byte, arg string) (int, error) {
 
 
 	switch arg{
+	case "key_this_time":
+		var key_this_time []byte
+		row := db.QueryRow("SELECT key_this_time FROM cards WHERE uid = ?", uid)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = row.Scan(&key_this_time)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if bytes.Equal(input, key_this_time){
+			fmt.Printf("key matches")
+			return 1,nil
+		}
+		return 0,nil
 	case "key_last_time":
 		var key_last_time []byte
 		row := db.QueryRow("SELECT key_last_time FROM cards WHERE uid = ?", uid)
@@ -137,5 +153,12 @@ func database_checker(uid []byte, input []byte, arg string) (int, error) {
 		fmt.Printf("wrong argument")
 		return 0,nil
 	}
+	return 0,nil
+}
+
+func database_updater(uid []byte, input []byte, arg string) (int, error) {
+	//WIP
+	fmt.Printf("Work in progress")
+
 	return 0,nil
 }
