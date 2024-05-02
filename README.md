@@ -14,8 +14,8 @@ Step Six: After receiving confirmation from the server, the ESP writes this AES 
 Step Seven: The ESP sends a success message for the key writing, and the server updates the one-time key for that UID.    
     
 
-# Working progress
-O: done , X: not started.
+# Working progress - ESP32           
+O: done , X: not started.    
 
 O Generate a EDCH key pair   
 O Find esp32 on LAN using UDP   
@@ -27,7 +27,18 @@ WIP: ~~RC522~~ PN532
 X Write one time AES key to card    
 X Card attach fail handling  
 - Encrypt UID by Key which derivation based on UID and EDCH shared key ---> do on server side    
-Other part of this project: TOTP and Password  
+Other part of this project: TOTP and Password    
+
+# Working progress - GO server    
+O: done , X: not started.    
+
+O HTTPS so password and TOTP will be TLS1.2     
+O Database sqlite3    
+WIP:  TCP connection handle    
+WIP:  Calculate shared secret key    
+X Derive AES key based on shared key    
+X encrypt the database      
+X Test everything
 
 The reason why the progress is slow because I've use two days try to make my esp prog working.    
 However, All I get is :    
