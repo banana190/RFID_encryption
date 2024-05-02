@@ -1,17 +1,33 @@
 # How this work?    
-Step One: The server greets the ESP.    
-    
-Step Two: The ESP sends a signature to the server.    
-    
-Step Three: After confirming the signature, the server sends an ECDH public key to the ESP.    
-    
-Step Four: Upon receiving the public key, the ESP checks its integrity and, if intact, sends its public key to the server.    
-    
-Step Five: Using the shared key derived, the ESP read the encrypted UID and the one-time key on card and sends it to the server for confirmation.    
+
+Step One: ESP establish TLS connection to server with a ECDH public key E_E.    
+
+Step Two: Server send a public key E_S.    
+
+
+~~Step One: The server greets the ESP.~~    
+~~Step Two: The ESP sends a signature to the server.~~   
+~~Step Three: After confirming the signature, the server sends an ECDH public key to the ESP.~~
+~~Step Four: Upon receiving the public key, the ESP checks its integrity and, if intact, sends its public key to the server.~~
+
+Step Three: Using the shared key derived, the ESP read the encrypted UID and the one-time key on card and sends it to the server for confirmation.    
     
 Step Six: After receiving confirmation from the server, the ESP writes this AES key onto the card.   
     
 Step Seven: The ESP sends a success message for the key writing, and the server updates the one-time key for that UID.    
+
+# Question. With TLS do we really need to exchange key with ECDH?
+
+Can it be:
+
+Step One: ESP32 establish TLS connection to server with and send card data.    
+
+Step Two: if valid server will send a new key to ESP32. Optional: also send a login URL.    
+
+Step Three: password and TOTP login       
+
+Done.
+
     
 
 # Working progress - ESP32           
