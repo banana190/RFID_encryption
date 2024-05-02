@@ -56,10 +56,5 @@ X Derive AES key based on shared key
 X encrypt the database      
 X Test everything
 
-The reason why the progress is slow because I've use two days try to make my esp prog working.    
-However, All I get is :    
-Error: JTAG scan chain interrogation failed: all ones    
-like I cannot remember how many times I've connect and disconnect GPIO 12-15    
-Well I guess it's time for debugging only using ESP_LOGI();    
-Some things don't matter until they're lost, like debugger. Sadge    
+BTW I'll still finish this work with only TCP in the future because it's kinda fun, but currently the project deadline is close.        
     
