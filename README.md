@@ -12,7 +12,7 @@ Step Four: Server send OK to ESP32.
 # Working progress - ESP32       
 O: done , X: not started.      
 O Burn HMAC key on Efuse       
-O HMAC Derive AES for RSA private key and crt. Write them into flash. 
+O HMAC Derive AES for RSA private key and crt. Write them into flash.        
 O card read and write based on https://github.com/thanhbinh89/pn532-esp-idf     
 O Generate new card key and write on card          
 O Establish TLS connection      
