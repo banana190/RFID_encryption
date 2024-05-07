@@ -44,7 +44,13 @@ int ecdh_public_key_generate(mbedtls_ecdh_context *ctx,uint8_t *public_key, size
     size_t olen;
     int ret = mbedtls_ecdh_make_public(ctx, &olen, public_key, MBEDTLS_ECP_MAX_PT_LEN, mbedtls_ctr_drbg_random, &ctr_drbg);
 
-    *public_key_len = olen;
+    
+
+    unsigned char base64_pubkey[MBEDTLS_ECP_MAX_PT_LEN * 2];
+    size_t base64_len = 0;
+    mbedtls_base64_encode(base64_pubkey, sizeof(base64_pubkey), &base64_len, public_key_len, olen);
+    memccpy(public_key,base64_pubkey,0,base64_len);// need to check this 
+    *public_key_len = base64_len;
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
 
@@ -137,6 +143,6 @@ int ecdh_key_exchange(mbedtls_ecdh_context *ctx,const char *Bob_public_key_base6
     mbedtls_ecp_point_free(&Bob_ecp_point);
     mbedtls_ecp_group_free(&grp);
     mbedtls_mpi_free(&shared_secret);
-
+ 
     return ret;
 }

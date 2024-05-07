@@ -6,4 +6,5 @@ factory,  app,  factory,  0x10000,  1M
 ota_0,    app,  ota_0,    ,         1M
 ota_1,    app,  ota_1,    ,         1M
 nvs_key,  data, nvs_keys, ,        0x1000
-RSA_key,  data, nvs_keys, ,        0x1000
+RSA_key,  data, nvs_keys, ,        0x1000, readonly
+RSA_crt,  data, nvs_keys, ,        0x1000, readonly

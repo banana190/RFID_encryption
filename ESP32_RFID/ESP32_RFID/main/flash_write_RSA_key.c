@@ -12,8 +12,7 @@
 #include "mbedtls/base64.h"
 
 #define AES_KEY_SIZE 32
-#define Input_RSA_private_key  "Your Pem key without head and tail and /n"
-#define Input_RSA_public_key_length 1600
+#define Input_RSA_private_key  "Pem No /n head and tail"
 // based on partiton.csv file.
 // e.g. RSA_key,data,nvs_keys,,0x1000 <--- the size is 4kb so it's 4096
 #define PARTITION_SIZE 4096 
@@ -85,7 +84,7 @@ void print_hex_uint8_t(uint8_t *str, size_t size) {
 //                                40 mod 16 = 8  then you fill 16- 8 = 0x08 eight times  
 void pad_string_pkcs7(uint8_t *input_string, size_t *length) {
     ESP_LOGI("pkcs7", "length before doing any process for padding : %zu", *length);
-    print_hex_uint8_t(input_string, *length);
+    // print_hex_uint8_t(input_string, *length);
     int block_size = 16; // for AES the input block size is 16 bytes (128 bits)
     // int input_length = strlen(input_string); 
     int padding_size = block_size - (*length % block_size); // 16 - length mod 16
@@ -112,7 +111,7 @@ void pad_string_pkcs7(uint8_t *input_string, size_t *length) {
     // *length += padding_size; 
 
     ESP_LOGI("pkcs7", "padding done! String after padding :");
-    print_hex_uint8_t(input_string, temp); // I use hex because %c cannot work with ASCII 1~31
+    // print_hex_uint8_t(input_string, temp); // I use hex because %c cannot work with ASCII 1~31
     *length = temp;
     ESP_LOGI("pkcs7", "length after padding : %zu", *length);
 }
@@ -120,7 +119,7 @@ void pad_string_pkcs7(uint8_t *input_string, size_t *length) {
 void depad_string_pkcs7(uint8_t *input_string, size_t *length)
 {
     ESP_LOGI("pkcs7", "length before doing any process for depadding : %zu", *length);
-    print_hex_uint8_t(input_string, *length);
+    // print_hex_uint8_t(input_string, *length);
     if (*length %16 !=0)
     {
         ESP_LOGE("pkcs7","The input size is not corrected! The encrypted data's length should be 16n");
@@ -163,14 +162,14 @@ void decode_pem_base64_to_der(const char *base64_str, size_t base64_len, unsigne
  */
 size_t string_with_AES(uint8_t *input_string,size_t length,bool mode)
 {
-    ESP_LOGI("AES","input string: ");
-    print_hex_uint8_t(input_string,length);
+    // ESP_LOGI("AES","input string: ");
+    // print_hex_uint8_t(input_string,length);
     unsigned char AES_key[AES_KEY_SIZE]; // AES-256 key size must be 32 bytes.
     if (HMAC_derive_AES_for_RSA_privateKey(AES_key)!=0){
         return 0;
     }    
     ESP_LOGI("AES","AES KEY:");
-    print_hex_uint8_t(AES_key,AES_KEY_SIZE);
+    // print_hex_uint8_t(AES_key,AES_KEY_SIZE);
     ESP_LOGI("AES","Input string length: %d", length);
     if(!mode) 
         pad_string_pkcs7(input_string,&length);
@@ -183,7 +182,7 @@ size_t string_with_AES(uint8_t *input_string,size_t length,bool mode)
         if(mode)
         {
             AES_decrypter(temp, sizeof(temp), AES_key, temp);
-            ESP_LOGI("AES", "AES decrypting : block%d",i); 
+            // ESP_LOGI("AES", "AES decrypting : block%d",i); 
         }
         else
         {
@@ -198,13 +197,13 @@ size_t string_with_AES(uint8_t *input_string,size_t length,bool mode)
     if(!mode)
     {
         ESP_LOGI("AES","encrypted data:");
-        print_hex_uint8_t(input_string,length);
+        // print_hex_uint8_t(input_string,length);
     }
     else
     {
         depad_string_pkcs7(input_string,&length);
         ESP_LOGI("AES","decrypted data:");
-        print_hex_uint8_t(input_string,length);
+        // print_hex_uint8_t(input_string,length);
     }
     // I realize that the length didn't update because I didn't use length*
     // But I'm too lazy to rewrite the function so I just return the length value to update it
@@ -247,13 +246,17 @@ void flash_writer() // this function might only be used for once since after I e
     ESP_LOGI("Flash Writer", "Flash done: %d", ret);
     free(RSA_encrypted_key);
 }
-
-size_t flash_reader(uint8_t *decrypted_rsa_private_key,size_t flash_size)
+// label we have 0 ="RSA_key" and 1 ="RSA_crt"
+size_t flash_reader(uint8_t *decrypted_rsa_private_key,size_t flash_size, bool label)
 {
     ESP_LOGI("Flash Reader", "start reading data from flash");
-    const esp_partition_t* rsa_key_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS_KEYS, "RSA_key");
+    const esp_partition_t* rsa_key_partition;
+    if (label)
+        rsa_key_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS_KEYS, "RSA_crt");
+    else
+        rsa_key_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS_KEYS, "RSA_key");
     if (!rsa_key_partition) {
-        ESP_LOGE("Flash Reader", "RSA_key partition not found");
+        ESP_LOGE("Flash Reader", "partition not found");
         return 0;
     }
     uint8_t* decrypted_rsa_key = malloc(4096);
@@ -278,12 +281,14 @@ size_t flash_reader(uint8_t *decrypted_rsa_private_key,size_t flash_size)
                 break;
            }
     }
-    print_hex_uint8_t(decrypted_rsa_key,rsa_key_length);
+    // print_hex_uint8_t(decrypted_rsa_key,rsa_key_length);
     rsa_key_length = string_with_AES(decrypted_rsa_key, rsa_key_length, true); 
-    ESP_LOGI("Flash Reader", "decrypted_rsa_key :");
-    print_hex_uint8_t(decrypted_rsa_key,rsa_key_length); 
+    ESP_LOGI("Flash Reader", " Read data:");
+    // print_hex_uint8_t(decrypted_rsa_key,rsa_key_length); 
     memcpy(decrypted_rsa_private_key, decrypted_rsa_key, rsa_key_length);
     free(decrypted_rsa_key);
     return rsa_key_length;
 }
+
+
 

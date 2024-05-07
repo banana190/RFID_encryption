@@ -212,7 +212,7 @@
         size_t signature_len = sizeof(signature);
         ESP_LOGI("RSA sign Testing","singature space loaded: %zu bytes", signature_len/8);
         uint8_t *decrypted_rsa_private_key = malloc(4096); // Ensure your buffer is appropriately sized
-        size_t decrypted_rsa_private_key_len = flash_reader(decrypted_rsa_private_key, 4096);
+        size_t decrypted_rsa_private_key_len = flash_reader(decrypted_rsa_private_key, 4096,"RSA_key");
         ESP_LOGI("RSA sign Testing","decrypted RSA private key loaded from flash");
         print_hex_uint8_t(decrypted_rsa_private_key, decrypted_rsa_private_key_len);
 

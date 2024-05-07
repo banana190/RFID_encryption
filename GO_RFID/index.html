@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Send to server</title>
+    <script>
+      function sendPasswordJSON() {
+        var queryString = window.location.search;
+        var urlParams = new URLSearchParams(queryString);
+        const uid = urlParams.get("UID");
+        const password = document.getElementById("password").value;
+        const totp = document.getElementById("totp").value;
+        const data = {
+          type: "Password",
+          PW: password,
+          TOTP: totp,
+          UID: uid,
+        };
+
+        fetch("/json", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+            return response.text();
+          })
+          .then((data) => {
+            alert("Server Response: " + data);
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+
+        return false;
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Send Password JSON</h2>
+    <form onsubmit="return sendPasswordJSON()">
+      <label for="password">Enter Password:</label><br />
+      <input type="text" id="password" name="password" /><br /><br />
+      <label for="totp">Enter totp:</label><br />
+      <input type="text" id="totp" name="totp" /><br /><br />
+      <button type="submit">Send Password</button>
+    </form>
+  </body>
+</html>
