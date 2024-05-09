@@ -7,7 +7,8 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
-
+#include "driver/gpio.h"
+#define BLUE_GPIO 4
 
 #include "esp_tls.h"
 #include "esp_http_client.h"
@@ -17,9 +18,9 @@
 #include "card_reader.h"
 
 
-#define WEB_SERVER "https://10.24.4.104"  // LAN
+#define WEB_SERVER "https://192.168.153.15"  // LAN
 #define WEB_PORT "443" 
-#define HOST "Host: 10.24.4.104\r\n"
+#define HOST "Host: 192.168.153.15\r\n"
 #define WEB_URL "No domain and no fixed ip Erm"
 
 #define Flash_Size 4096
@@ -31,16 +32,9 @@ extern int64_t start_time;
 
 void generate_random_hex(uint8_t *buffer, size_t length)
 {
-    const char hex_charset[] = "0123456789ABCDEF";
-    size_t charset_length = sizeof(hex_charset) - 1;
-
     for (int i = 0; i < length; i++) {
-        uint32_t random_num = esp_random();
-        uint32_t random_index = random_num % charset_length;
-
-        buffer[i] = hex_charset[random_index];
+        buffer[i] = esp_random() % 256;  
     }
-    buffer[length] = '\0';
 }
 
 void bytes_to_hex_string(const uint8_t *bytes, size_t length, char *hex_string) {
@@ -98,8 +92,10 @@ int https_request(uint8_t *uid, uint8_t *card_key)
 
     char hex_uid[15]; // 7*2+1
     bytes_to_hex_string(uid, 7, hex_uid);
-    char hex_key[61]; // 30*2+1
-    bytes_to_hex_string(card_key, 30, hex_key);
+    // char hex_key[61]; // 30*2+1
+    // bytes_to_hex_string(card_key, 30, hex_key);
+    char hex_key[31]; // 15*2+1
+    bytes_to_hex_string(card_key, 15, hex_key);
 
     ESP_LOGI("TLS","UID: %s ,Key: %s",hex_uid,hex_key);
 
@@ -143,11 +139,11 @@ int https_request(uint8_t *uid, uint8_t *card_key)
     } while (1);
     if (strstr((const char *)buf, "200 OK"))
     {
-        ESP_LOGI("TLS", "First response completed");
+        // ESP_LOGI("TLS", "First response completed");
         uint8_t random_bytes[31] = {0};
-        ESP_LOGI("TLS", "Generating random bytes");
-        generate_random_hex(random_bytes,30);
-        ESP_LOGI("TLS", "Writing new key to card");
+        // ESP_LOGI("TLS", "Generating random bytes");
+        generate_random_hex(random_bytes,15);
+        // ESP_LOGI("TLS", "Writing new key to card");
         int err = card_write_on_block(uid,random_bytes);
         // from here the card can leave from the reader.
         ESP_LOGI("RFID_READER", "Card can detach");
@@ -163,9 +159,8 @@ int https_request(uint8_t *uid, uint8_t *card_key)
             end_time = 0;
             ESP_LOGI("TIMER","Elapsed time: %lld microseconds\n", elapsed_time);
             ESP_LOGI("TLS", "Writing new key to card success");
-            ESP_LOGI("PN532", "card can detach now");
-            char hex_random_bytes[61];
-            for (int i = 0; i < 30; i++) {
+            char hex_random_bytes[31];
+            for (int i = 0; i < 15; i++) {
             sprintf(hex_random_bytes + 2 * i, "%02X", random_bytes[i]);
             }
 
@@ -190,7 +185,6 @@ int https_request(uint8_t *uid, uint8_t *card_key)
             if (ret < 0) 
             {
                 ESP_LOGE("TLS", "Failed to send success request");
-                esp_tls_conn_destroy(tls);
                 goto clear;
             }
 
@@ -198,6 +192,12 @@ int https_request(uint8_t *uid, uint8_t *card_key)
                 len = sizeof(buf) - 1;
                 memset(buf, 0, sizeof(buf));
                 ret = esp_tls_conn_read(tls, (char *)buf, len);
+                if (strstr((const char *)buf, "IS_OK:NO")) 
+                {
+                    ESP_LOGE("TLS", "Invalid card Key");
+                    esp_tls_conn_destroy(tls);
+                    goto clear;
+                }
                 if (ret <= 0) 
                     break;
                 buf[ret] = '\0';
@@ -229,13 +229,19 @@ int https_request(uint8_t *uid, uint8_t *card_key)
                     system_pass = true;
                     break;
                 }
-                vTaskDelay(pdMS_TO_TICKS(5000));
+                if (strstr((const char *)buf, "400 Bad")) 
+                {
+                    ESP_LOGE("TLS", "Attempt time limit exceeded");
+                    break;
+                }
+                xTaskCreate(&blink_task_blue, "blink_task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
+                vTaskDelay(pdMS_TO_TICKS(2500));
             } while (1);
         }
     }
     esp_tls_conn_destroy(tls);
-    ESP_LOGI("TLS", "Connection closed");
 clear:
+    ESP_LOGI("TLS", "Connection closed");
     free(key);
     free(crt);
     if (system_pass)

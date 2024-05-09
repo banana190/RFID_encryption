@@ -48,7 +48,6 @@
 #define PN532_MISO 19
 #define PN532_MOSI 23
 #define PN532_SS 5
-#define BLINK_GPIO 2
 
 
 #define BUF_SIZE (1024)
@@ -92,18 +91,6 @@ static void obtain_time()
     ESP_LOGI("SNTP", "Current time: %s", asctime(&timeinfo));
 }
 
-void blink_task(void *pvParameter)
-{
-    esp_rom_gpio_pad_select_gpio(BLINK_GPIO);
-    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
-    for (int i = 0; i <5;i++) {
-        gpio_set_level(BLINK_GPIO, 0);
-        vTaskDelay(900 / portTICK_PERIOD_MS);
-        gpio_set_level(BLINK_GPIO, 1);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
-    vTaskDelete(NULL);
-}
 
 void nfc_task(void *pvParameter)
 {
@@ -139,7 +126,8 @@ void nfc_task(void *pvParameter)
         uint8_t uid[] = {0, 0, 0, 0, 0, 0, 0};
         uint8_t *card_key;
 
-        card_key = (uint8_t *)malloc(30 * sizeof(uint8_t));
+        // card_key = (uint8_t *)malloc(30 * sizeof(uint8_t));
+        card_key = (uint8_t *)malloc(15 * sizeof(uint8_t));
         // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
         // 'uid' will be populated with the UID, and uidLength will indicate
         // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
@@ -168,9 +156,9 @@ void nfc_task(void *pvParameter)
         key_RW = pn532_mifareclassic_ReadDataBlock(&nfc, 4, card_key_1);
         if (key_RW)
         {
-            ESP_LOGI("PN532", "Reading block 5");
-            pn532_mifareclassic_AuthenticateBlock(&nfc, uid, uidLength, 5, 0, keyA);
-            key_RW = pn532_mifareclassic_ReadDataBlock(&nfc, 5, card_key_2);
+            // ESP_LOGI("PN532", "Reading block 5");
+            // pn532_mifareclassic_AuthenticateBlock(&nfc, uid, uidLength, 5, 0, keyA);
+            // key_RW = pn532_mifareclassic_ReadDataBlock(&nfc, 5, card_key_2);
         }
         else
         {
@@ -188,8 +176,8 @@ void nfc_task(void *pvParameter)
         // }
         // printf("\n");
         memcpy(card_key,card_key_1,15);
-        memcpy(card_key+15,card_key_2,15);
-        ESP_LOGI("PN532", "Combime key: ");
+        // memcpy(card_key+15,card_key_2,15);
+        // ESP_LOGI("PN532", "Combime key: ");
         // for (int i = 0; i < 30; i++) 
         // {
         //     printf("%02X ", card_key[i]);
@@ -203,7 +191,11 @@ void nfc_task(void *pvParameter)
         card_key = NULL;
         if (pass)
         {
-            xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
+            xTaskCreate(&blink_task_green, "blink_task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
+        }
+        else
+        {
+            xTaskCreate(&blink_task_red, "blink_task", configMINIMAL_STACK_SIZE, NULL, 5, NULL);
         }
     }
 }

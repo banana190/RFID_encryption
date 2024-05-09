@@ -9,8 +9,8 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
-#define WIFI_SSID "OP404-2G"
-#define WIFI_PASSWORD "SameDays4454"
+#define WIFI_SSID "Ex_VoidBean"
+#define WIFI_PASSWORD "dan0327206"
 #define MAXIMUM_RETRY 10
 static const char *TAG = "wifi station";
 static int s_retry_num = 0;

@@ -13,6 +13,8 @@ import (
 	"github.com/mdp/qrterminal/v3"
 )
 
+const localIP = "192.168.153.15"
+var attempt_time = 0
 
 type Request struct {
     Type string `json:"type"`
@@ -49,6 +51,8 @@ type Request struct {
 
 var checker bool
 var passing bool
+var test_once = true
+const testing = true
 
 func handleJSON(w http.ResponseWriter, r *http.Request, UID string) {
     var Req Request
@@ -69,7 +73,9 @@ func handleJSON(w http.ResponseWriter, r *http.Request, UID string) {
 		bin_UID, err := hex.DecodeString(Req.UID)
 		result ,err :=database_checker(bin_UID, hash, "password")
 		if result != 1{
+			fmt.Println("Invalid password")
 			http.Error(w, "Invalid password", http.StatusBadRequest)
+			attempt_time++
 			return
 		}
 		if err != nil {
@@ -81,7 +87,9 @@ func handleJSON(w http.ResponseWriter, r *http.Request, UID string) {
 
 		result ,err =database_checker(bin_UID, TOTP_bytes, "TOTP")
 		if result != 1{
+			fmt.Println("Invalid TOTP")
 			http.Error(w, "Invalid TOTP", http.StatusBadRequest)
+			attempt_time++
 			return
 		}
 		passing = true
@@ -93,11 +101,14 @@ func handleJSON(w http.ResponseWriter, r *http.Request, UID string) {
 		fmt.Println("Key:", Req.OtAK)
 		bin_UID, err := hex.DecodeString(Req.UID)
 		bin_OtAK, err := hex.DecodeString(Req.OtAK)
-		// for testing
-		// hashed_password := sha256.Sum256([]byte("TESTING"))
-		// totp_secret_key,err := generateUniqueSecretKey()
-		// err = generateUniqueQRCode(totp_secret_key)
-		// database_register(bin_UID, hashed_password[:], bin_OtAK, totp_secret_key)
+		if testing && test_once{
+		hashed_password := sha256.Sum256([]byte("@Testing_password"))
+		totp_secret_key,err := generateUniqueSecretKey()
+		if err != nil{}
+		err = generateUniqueQRCode(totp_secret_key)
+		database_register(bin_UID, hashed_password[:], bin_OtAK, totp_secret_key)
+		test_once = false
+		}
 		result,err := database_checker(bin_UID, bin_OtAK,"key_this_time")
 		if err != nil {
 			fmt.Println("database_checker failed")
@@ -141,7 +152,6 @@ func handleJSON(w http.ResponseWriter, r *http.Request, UID string) {
 			// localIP, err := getLocalIP()
 			// since the getLocalIP() not working very well so for demo I change the IP by my self
 			// will be fixed in future
-			localIP := "10.24.4.104"
 			content := fmt.Sprintf("https://%s?UID=%s", localIP, Req.UID)
 			qrterminal.Generate(content, qrterminal.L, os.Stdout)
 			
@@ -183,7 +193,11 @@ func path_handler(w http.ResponseWriter, r *http.Request) {
             w.WriteHeader(http.StatusOK)
 			passing = false
 			checker = false
-		}else {
+			attempt_time = 0
+		}else if attempt_time >= 2 {
+			attempt_time = 0
+			http.Error(w, "BadRequest", http.StatusBadRequest)
+		}else{
             http.Error(w, "Unauthorized", http.StatusUnauthorized)
         }
 
