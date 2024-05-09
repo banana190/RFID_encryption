@@ -1,8 +1,8 @@
 # New method a.k.a. I don't have time.     
 
-Step One: ESP32 establish TLS connection to server with and send card data.    
+Step One: ESP32 establish TLS connection to server and send card data.    
 
-Step Two: if valid server will send a new key to ESP32. Optional: also send a login URL.    
+Step Two: if valid ESP32 will send a new key to Server. Optional: also send a login URL.    
 
 Step Three: password and TOTP login.       
 
