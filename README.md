@@ -1,6 +1,6 @@
 # Bug
 
-There is a bug in my backend design but I left my device in U.S. so I probably wont fix it :)
+There is a fatal design in my backend but I left my device in U.S. so I probably wont fix it :)
 
 # New method a.k.a. I don't have time.     
 
