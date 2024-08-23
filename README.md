@@ -1,3 +1,7 @@
+# Bug
+
+There is a bug in my backend design but I left my device in U.S. so I probably wont fix it :)
+
 # New method a.k.a. I don't have time.     
 
 Step One: ESP32 establish TLS connection to server and send card data.    
